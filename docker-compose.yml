@@ -34,5 +34,17 @@ services:
       db:
         condition: service_healthy
 
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    environment:
+      # The page's server-side fetch runs inside this container, so it
+      # reaches the API by its compose service name, not localhost.
+      API_BASE_URL: http://backend:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
 volumes:
   pgdata:
