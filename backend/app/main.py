@@ -28,4 +28,4 @@ async def health_db(session: Annotated[AsyncSession, Depends(get_db)]):
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="database unreachable",
         ) from exc
-    return {"database": "ok"}
+    return {"status": "ok"}
