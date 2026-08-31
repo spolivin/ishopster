@@ -1,13 +1,21 @@
 """Application configuration, loaded from the environment / `.env`."""
 
+from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy import URL
+
+# Repo-root .env, resolved from this file's location so it is found no
+# matter the working directory (app run from backend/, alembic, tests).
+# In the container the file is absent; compose injects the vars directly
+# and pydantic-settings simply skips a missing env_file.
+ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
 
 
 class Settings(BaseSettings):
     """Postgres connection settings, populated from the environment."""
 
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(env_file=ENV_FILE, extra="ignore")
 
     postgres_user: str
     postgres_password: str
