@@ -4,11 +4,17 @@ version = "0.1.0"
 description = "ishopster backend (FastAPI)"
 requires-python = ">=3.12"
 dependencies = [
+    "alembic>=1.19.1",
     "fastapi[standard]>=0.141.1",
     "psycopg[binary]>=3.2",
     "pydantic-settings>=2.15.0",
     "sqlalchemy>=2.0",
 ]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+exclude = ["alembic"]
 
 [tool.uv]
 package = false
