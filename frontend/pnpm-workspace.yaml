@@ -1,0 +1,5 @@
+# pnpm blocks dependency lifecycle (build) scripts by default.
+# unrs-resolver ships a native binding that eslint-config-next needs,
+# so its build step is explicitly allowed here.
+allowBuilds:
+  unrs-resolver: true
