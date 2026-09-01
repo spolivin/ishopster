@@ -1,39 +1,38 @@
-// Server Component (no "use client"): this runs on the Next.js server,
-// so the fetch below is a server-to-server request. No CORS, and the
-// result is baked into the HTML that reaches the browser / crawlers.
+import type { Metadata } from "next";
+import Link from "next/link";
 
-type Health = { status: string };
+import { getCategories } from "@/lib/api";
 
-// Render this page on every request (never prerender at build time), so
-// the backend is checked live and API_BASE_URL is read from the runtime
-// environment, not baked into the build.
+// Live catalog data, and the backend is not reachable during `next build`.
 export const dynamic = "force-dynamic";
 
-const API_BASE_URL = process.env.API_BASE_URL ?? "http://localhost:8000";
-
-async function getBackendHealth(endpoint: string): Promise<Health | null> {
-  try {
-    // fetch is not cached by default in this Next.js version, so each
-    // request re-checks the backend.
-    const res = await fetch(`${API_BASE_URL}${endpoint}`);
-    if (!res.ok) return null;
-    return (await res.json()) as Health;
-  } catch {
-    return null;
-  }
-}
+export const metadata: Metadata = {
+  // The home page title should be exactly "ishopster", not "… — ishopster".
+  title: "ishopster",
+  description: "Browse laptops, smartphones and accessories.",
+  alternates: { canonical: "/" },
+};
 
 export default async function Home() {
-  const [health, healthDb] = await Promise.all([
-    getBackendHealth("/health"),
-    getBackendHealth("/health/db"),
-  ]);
+  const categories = await getCategories();
 
   return (
     <main>
       <h1>ishopster</h1>
-      <p>Backend health: {health ? health.status : "unavailable"}</p>
-      <p>Backend DB health: {healthDb ? healthDb.status : "unavailable"}</p>
+
+      <nav aria-label="Categories">
+        <ul>
+          {categories.map((category) => (
+            <li key={category.slug}>
+              <Link href={`/categories/${category.slug}`}>{category.name}</Link>
+            </li>
+          ))}
+        </ul>
+      </nav>
+
+      <p>
+        <Link href="/products">See all products</Link>
+      </p>
     </main>
   );
 }

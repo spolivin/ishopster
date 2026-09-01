@@ -41,6 +41,8 @@ services:
       # The page's server-side fetch runs inside this container, so it
       # reaches the API by its compose service name, not localhost.
       API_BASE_URL: http://backend:8000
+      # Public origin, used for canonical URLs, sitemap.xml and robots.txt.
+      SITE_URL: http://localhost:3000
     ports:
       - "3000:3000"
     depends_on:
