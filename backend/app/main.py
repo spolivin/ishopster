@@ -7,13 +7,14 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .db import get_db
-from .routers import categories
+from .routers import categories, products
 
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
 app.include_router(categories.router)
+app.include_router(products.router)
 
 
 @app.get("/health")
