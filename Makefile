@@ -16,5 +16,5 @@ frontend-format:
 frontend-format-check:
 	cd frontend && pnpm format:check
 
-sql-exercises:
-	docker compose exec -T db psql -U dbuser -d dbname < sql/exercises.sql
+sql-seed:
+	docker compose exec -T db psql -U dbuser -d dbname < sql/seed.sql
