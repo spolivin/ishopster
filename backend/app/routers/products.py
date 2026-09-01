@@ -7,16 +7,22 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db import get_db
-from ..models import Product
+from ..models import Category, Product
 from ..schemas import ProductRead
 
 router = APIRouter(prefix="/api/products", tags=["products"])
 
 
 @router.get("", response_model=list[ProductRead])
-async def list_products(session: Annotated[AsyncSession, Depends(get_db)]):
-    """Return every product, ordered by name."""
-    result = await session.execute(select(Product).order_by(Product.name))
+async def list_products(
+    session: Annotated[AsyncSession, Depends(get_db)],
+    category: str | None = None,
+):
+    """Return products, optionally filtered by category slug."""
+    query = select(Product).order_by(Product.name)
+    if category is not None:
+        query = query.join(Category).where(Category.slug == category)
+    result = await session.execute(query)
     return result.scalars().all()
 
 
