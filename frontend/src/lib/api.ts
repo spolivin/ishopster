@@ -62,9 +62,7 @@ export async function getCategory(slug: string): Promise<Category | null> {
  * Any failure propagates.
  */
 export function getProducts(category?: string): Promise<Product[]> {
-  const query = category
-    ? `?category=${encodeURIComponent(category)}`
-    : "";
+  const query = category ? `?category=${encodeURIComponent(category)}` : "";
   return apiFetch<Product[]>(`/api/products${query}`);
 }
 
