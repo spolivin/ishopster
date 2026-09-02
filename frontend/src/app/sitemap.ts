@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-import { getCategories, getProducts } from "@/lib/api";
+import { getAllProducts, getCategories } from "@/lib/api";
 import { SITE_URL } from "@/lib/site";
 
 // Built from live data, and the backend is not reachable during `next build`.
@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [categories, products] = await Promise.all([
     getCategories(),
-    getProducts(),
+    getAllProducts(),
   ]);
 
   const staticRoutes: MetadataRoute.Sitemap = [

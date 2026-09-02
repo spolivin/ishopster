@@ -18,6 +18,14 @@ export type Product = {
   category: Category;
 };
 
+/** One page of products, matching the backend `ProductList` schema. */
+export type ProductList = {
+  items: Product[];
+  total: number; // total matching products, ignoring limit/offset
+  limit: number;
+  offset: number;
+};
+
 const API_BASE_URL = process.env.API_BASE_URL ?? "http://localhost:8000";
 
 /** Thrown when the backend answers with a non-2xx status. */
@@ -59,12 +67,33 @@ export async function getCategory(slug: string): Promise<Category | null> {
 }
 
 /**
- * Products, optionally filtered to one category by its slug.
+ * One page of products, optionally filtered to one category by its slug.
  * Any failure propagates.
  */
-export function getProducts(category?: string): Promise<Product[]> {
-  const query = category ? `?category=${encodeURIComponent(category)}` : "";
-  return apiFetch<Product[]>(`/api/products${query}`);
+export function getProducts(
+  opts: { category?: string; limit?: number; offset?: number } = {},
+): Promise<ProductList> {
+  const params = new URLSearchParams();
+  if (opts.category) params.set("category", opts.category);
+  if (opts.limit !== undefined) params.set("limit", String(opts.limit));
+  if (opts.offset !== undefined) params.set("offset", String(opts.offset));
+  const query = params.toString();
+  return apiFetch<ProductList>(`/api/products${query ? `?${query}` : ""}`);
+}
+
+/**
+ * Every product, following pagination to the end. Used by the sitemap,
+ * which must list all URLs. Fine while the catalog is small; revisit if it
+ * grows into the thousands.
+ */
+export async function getAllProducts(): Promise<Product[]> {
+  const pageSize = 100;
+  const all: Product[] = [];
+  for (let offset = 0; ; offset += pageSize) {
+    const page = await getProducts({ limit: pageSize, offset });
+    all.push(...page.items);
+    if (offset + pageSize >= page.total) return all;
+  }
 }
 
 /** One product by slug, or `null` if the backend returned 404. */

@@ -31,7 +31,8 @@ export default async function CategoryPage({ params }: Params) {
   const category = await getCategory(slug);
   if (!category) notFound();
 
-  const products = await getProducts(slug);
+  // TODO: category pages are not paginated yet; this shows the first page.
+  const { items: products } = await getProducts({ category: slug });
 
   const breadcrumbs = {
     "@context": "https://schema.org",
