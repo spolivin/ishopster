@@ -1,5 +1,6 @@
 """Read-only endpoints for the category resource."""
 
+from collections.abc import Sequence
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -14,14 +15,18 @@ router = APIRouter(prefix="/api/categories", tags=["categories"])
 
 
 @router.get("", response_model=list[CategoryRead])
-async def list_categories(session: Annotated[AsyncSession, Depends(get_db)]):
+async def list_categories(
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> Sequence[Category]:
     """Return every category, ordered by name."""
     result = await session.execute(select(Category).order_by(Category.name))
     return result.scalars().all()
 
 
 @router.get("/{slug}", response_model=CategoryRead)
-async def get_category(slug: str, session: Annotated[AsyncSession, Depends(get_db)]):
+async def get_category(
+    slug: str, session: Annotated[AsyncSession, Depends(get_db)]
+) -> Category:
     """Return a single category by its slug, or 404 if none exists."""
     result = await session.execute(select(Category).where(Category.slug == slug))
     category = result.scalar_one_or_none()
