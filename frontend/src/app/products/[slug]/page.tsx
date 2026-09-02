@@ -46,14 +46,37 @@ export default async function ProductPage({ params }: Params) {
     },
   };
 
+  const breadcrumbLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: SITE_URL },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: product.category.name,
+        item: `${SITE_URL}/categories/${product.category.slug}`,
+      },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: product.name,
+        item: `${SITE_URL}/products/${product.slug}`,
+      },
+    ],
+  };
+
   return (
     <main>
       <JsonLd data={productLd} />
+      <JsonLd data={breadcrumbLd} />
 
       <nav aria-label="Breadcrumb">
         <Link href="/">Home</Link>
         {" / "}
-        <Link href="/products">All products</Link>
+        <Link href={`/categories/${product.category.slug}`}>
+          {product.category.name}
+        </Link>
         {" / "}
         {product.name}
       </nav>

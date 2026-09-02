@@ -15,6 +15,7 @@ export type Product = {
   slug: string;
   description: string | null;
   price: string; // Decimal serialized as a string by the backend
+  category: Category;
 };
 
 const API_BASE_URL = process.env.API_BASE_URL ?? "http://localhost:8000";
