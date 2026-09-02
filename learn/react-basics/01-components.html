@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>React 01 — components and JSX</title>
+  </head>
+  <body>
+    <!--
+      1. This is the only "real" HTML element on the page.
+         React takes this empty div and renders everything else inside it.
+    -->
+    <div id="root"></div>
+
+    <!--
+      2. Three libraries from a CDN. Enough for learning, no build step.
+         - react            — the library itself (component logic)
+         - react-dom        — the code that renders React into the browser
+         - babel standalone — converts JSX (HTML-like syntax inside JS) into
+                              plain JavaScript on the fly. In a real project
+                              a bundler does this ahead of time, not the browser.
+    -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!--
+      3. type="text/babel" tells the browser: "this is not plain JS, run it
+         through Babel first". That is what lets us write JSX right here.
+    -->
+    <script type="text/babel">
+      // =====================================================================
+      //  COMPONENT
+      // =====================================================================
+      //
+      //  A React component is just a FUNCTION that returns markup.
+      //  The name MUST start with a capital letter — that is how React tells
+      //  your component apart from a plain HTML tag (<div> is a tag,
+      //  <Greeting> is a component).
+      //
+      //  The HTML-looking thing inside return is called JSX. It is not a
+      //  string and not HTML — it is a JavaScript expression that Babel turns
+      //  into function calls. Write it like HTML, but remember: it is code.
+
+      function Greeting() {
+        return <p>Hi! This is my first component.</p>;
+      }
+
+      // ---------------------------------------------------------------------
+      //  PROPS — the component's input parameters
+      // ---------------------------------------------------------------------
+      //
+      //  A function component receives ONE argument — an object with every
+      //  value passed to it. By convention it is called `props`.
+      //
+      //  Inside JSX you can put any JS expression between { }:
+      //  a variable, props.name, a function call, arithmetic.
+
+      function UserCard(props) {
+        return (
+          <div>
+            <h2>{props.name}</h2>
+            <p>Age: {props.age}</p>
+            <p>In 10 years: {props.age + 10}</p>
+          </div>
+        );
+      }
+
+      // Props are often "unpacked" right away (destructuring) — you pull out
+      // the fields you need by name. This is the same UserCard, just shorter.
+      // You saw this syntax in ishopster:
+      //   function ProductsPage({ searchParams }) { ... }
+
+      function UserCardShort({ name, age }) {
+        return (
+          <div>
+            <h2>{name}</h2>
+            <p>Age: {age}</p>
+          </div>
+        );
+      }
+
+      // ---------------------------------------------------------------------
+      //  COMPOSITION — components nest inside each other
+      // ---------------------------------------------------------------------
+      //
+      //  App is the top component. It uses other components as tags and
+      //  passes them props through attributes:
+      //    <UserCard name="Anna" age={25} />
+      //
+      //  A string goes in quotes:            name="Anna"
+      //  A number / expression goes in braces: age={25}
+
+      function App() {
+        return (
+          <div>
+            <Greeting />
+            <hr />
+            <UserCard name="Anna" age={25} />
+            <UserCard name="Boris" age={40} />
+            <hr />
+            <UserCardShort name="Vera" age={33} />
+          </div>
+        );
+      }
+
+      // =====================================================================
+      //  START: tell react-dom to render <App /> inside div#root
+      // =====================================================================
+      const rootElement = document.getElementById("root");
+      const root = ReactDOM.createRoot(rootElement);
+      root.render(<App />);
+    </script>
+  </body>
+</html>
