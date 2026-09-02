@@ -18,3 +18,4 @@ class ProductRead(BaseModel):
     slug: str
     description: str | None = None
     price: Decimal
+    category: CategoryRead

@@ -5,6 +5,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from ..db import get_db
 from ..models import Category, Product
@@ -19,7 +20,9 @@ async def list_products(
     category: str | None = None,
 ):
     """Return products, optionally filtered by category slug."""
-    query = select(Product).order_by(Product.name)
+    query = (
+        select(Product).options(selectinload(Product.category)).order_by(Product.name)
+    )
     if category is not None:
         query = query.join(Category).where(Category.slug == category)
     result = await session.execute(query)
@@ -29,7 +32,11 @@ async def list_products(
 @router.get("/{slug}", response_model=ProductRead)
 async def get_product(slug: str, session: Annotated[AsyncSession, Depends(get_db)]):
     """Return a single product by its slug, or 404 if none exists."""
-    result = await session.execute(select(Product).where(Product.slug == slug))
+    result = await session.execute(
+        select(Product)
+        .options(selectinload(Product.category))
+        .where(Product.slug == slug)
+    )
     product = result.scalar_one_or_none()
     if product is None:
         raise HTTPException(
