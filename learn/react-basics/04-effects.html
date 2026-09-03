@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>React 04 — effects and data fetching</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <script type="text/babel">
+      const { useState, useEffect } = React;
+
+      // =====================================================================
+      //  WHY useEffect
+      // =====================================================================
+      //
+      //  The body of a component must be PURE: given the same props + state,
+      //  it returns the same JSX and does nothing else. No network calls, no
+      //  timers, no writing to document.title, no touching the DOM by hand.
+      //  React may call it often, skip it, or run it twice in development.
+      //
+      //  Anything that reaches OUTSIDE React — "side effects" — goes into
+      //  useEffect. React runs the effect function AFTER the render is on
+      //  screen.
+      //
+      //    useEffect(() => { ... }, [deps])
+      //
+      //  The dependency array controls WHEN the effect re-runs:
+      //    [] .......... once, after the first render (on "mount")
+      //    [a, b] ...... after the first render, then whenever a or b changed
+      //    (omitted) ... after EVERY render (rarely what you want)
+      //
+      //  If the effect returns a function, React runs it as CLEANUP: before
+      //  the next effect run, and when the component is removed.
+
+      // ---------------------------------------------------------------------
+      //  Small effect: keep the tab title in sync with state
+      // ---------------------------------------------------------------------
+
+      function TitleSync() {
+        const [count, setCount] = useState(0);
+
+        useEffect(() => {
+          document.title = `Clicked ${count} times`;
+        }, [count]); // re-run only when `count` changes
+
+        return <button onClick={() => setCount(count + 1)}>+1</button>;
+      }
+
+      // ---------------------------------------------------------------------
+      //  The real use case: fetch data when the component mounts
+      // ---------------------------------------------------------------------
+      //
+      //  Three pieces of state cover every async load:
+      //    - data    : the result (null until it arrives)
+      //    - loading : true while the request is in flight
+      //    - error   : an error message, or null
+      //
+      //  `async` cannot go directly on the effect callback, so we declare an
+      //  inner async function and call it.
+      //
+      //  `ignore` is a cleanup guard: if the component re-runs the effect (or
+      //  unmounts) before the response arrives, we must NOT call setState on
+      //  the old request. The cleanup flips `ignore` to true.
+
+      function ProductsFromApi() {
+        const [data, setData] = useState(null);
+        const [loading, setLoading] = useState(true);
+        const [error, setError] = useState(null);
+        const [limit, setLimit] = useState(5);
+
+        useEffect(() => {
+          let ignore = false;
+
+          async function load() {
+            setLoading(true);
+            setError(null);
+            try {
+              const res = await fetch(
+                `https://dummyjson.com/products?limit=${limit}&select=title,price`,
+              );
+              if (!res.ok) throw new Error(`HTTP ${res.status}`);
+              const json = await res.json();
+              if (!ignore) setData(json.products);
+            } catch (err) {
+              if (!ignore) setError(err.message);
+            } finally {
+              if (!ignore) setLoading(false);
+            }
+          }
+
+          load();
+
+          return () => {
+            ignore = true; // cleanup: ignore a response that comes in late
+          };
+        }, [limit]); // re-runs on mount and whenever `limit` changes
+
+        // Exercise 4 solution.
+        //
+        // ONE return, always the same shell: the <div> with the buttons is
+        // rendered on every render, no matter what loading/error/data are.
+        // Only the piece below the buttons swaps.
+        //
+        // Earlier this component had `if (loading) return <p>Loading…</p>`
+        // BEFORE the buttons. `return` ends the function, so on every reload
+        // the buttons (further down) were never reached and vanished from the
+        // screen. Early returns are fine only when the whole component is
+        // just that content; once there is a permanent shell, branch inside
+        // the JSX with `{cond && <JSX/>}` instead.
+        return (
+          <div>
+            {/* Always on screen. Clicking sets `limit`, which is in the
+                effect's dependency array, so the effect re-fetches. */}
+            <button onClick={() => setLimit(5)}>5</button>
+            <button onClick={() => setLimit(10)}>10</button>
+            <button onClick={() => setLimit(20)}>20</button>
+
+            {/* loading -> true only while a request is in flight
+                error   -> a string only if the last request failed
+                data    -> null until the first successful response, then
+                           keeps the PREVIOUS results during a reload.
+                So on a reload you briefly see "Loading…" ABOVE the old list.
+                That is usually good (stale content beats a blank screen);
+                if you wanted only one at a time, you would write
+                `{!loading && data && ...}`. */}
+            {loading && <p>Loading…</p>}
+            {error && <p>Failed to load: {error}</p>}
+            {data && (
+              <ul>
+                {data.map((product) => (
+                  <li key={product.id}>
+                    {product.title} — ${product.price}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        );
+      }
+
+      // =====================================================================
+      //  HOW THIS RELATES TO NEXT.JS
+      // =====================================================================
+      //
+      //  Everything above is CLIENT-SIDE fetching: the page loads, THEN the
+      //  browser asks for data, THEN it re-renders. The user sees "Loading…"
+      //  first, and a search engine may see an empty list.
+      //
+      //  A Next.js Server Component runs on the server before any HTML is
+      //  sent, so it can just:
+      //
+      //    async function ProductsPage() {
+      //      const products = await getProducts();   // no useState
+      //      return <ul>...</ul>;                    // no useEffect, no loading
+      //    }
+      //
+      //  That is why catalog pages are Server Components: less code, and the
+      //  HTML already contains the products. Use client-side fetching (this
+      //  lesson) only for data that changes AFTER load or depends on user
+      //  interaction the server cannot know about.
+
+      function App() {
+        return (
+          <div>
+            <h1>Effect: document.title</h1>
+            <p>Click, then look at the browser tab.</p>
+            <TitleSync />
+            <h1>Effect: fetch on mount</h1>
+            <ProductsFromApi />
+          </div>
+        );
+      }
+
+      const root = ReactDOM.createRoot(document.getElementById("root"));
+      root.render(<App />);
+    </script>
+  </body>
+</html>
