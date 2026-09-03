@@ -3,6 +3,47 @@
   <head>
     <meta charset="utf-8" />
     <title>React 01 — components and JSX</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        line-height: 1.5;
+        max-width: 640px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+        color: #1a1a1a;
+      }
+      h1 {
+        font-size: 1.25rem;
+        margin: 1.5rem 0 0.5rem;
+        padding-bottom: 0.25rem;
+        border-bottom: 1px solid #ddd;
+      }
+      h2 {
+        font-size: 1.05rem;
+        margin: 0.75rem 0 0.25rem;
+      }
+      ul {
+        padding-left: 1.25rem;
+      }
+      li {
+        margin: 0.25rem 0;
+      }
+      button {
+        font: inherit;
+        padding: 0.3rem 0.7rem;
+        margin-right: 0.5rem;
+        cursor: pointer;
+      }
+      input {
+        font: inherit;
+        padding: 0.3rem 0.5rem;
+      }
+      hr {
+        margin: 2rem 0;
+        border: none;
+        border-top: 1px solid #ddd;
+      }
+    </style>
   </head>
   <body>
     <!--
@@ -79,6 +120,20 @@
         );
       }
 
+      // --- Exercise 1 solution ------------------------------------------
+      //  Same pattern as UserCardShort: destructure the two props we need
+      //  ({ name, price }) straight from the argument object.
+      //  A component may return a single element with no wrapper <div>.
+      //  In JSX, `{name}` and `{price}` are expression slots; the literal
+      //  text " - " and "$" around them is just static text in the markup.
+      function ProductCard({ name, price }) {
+        return (
+          <p>
+            {name} - {price}$
+          </p>
+        );
+      }
+
       // ---------------------------------------------------------------------
       //  COMPOSITION — components nest inside each other
       // ---------------------------------------------------------------------
@@ -99,6 +154,13 @@
             <UserCard name="Boris" age={40} />
             <hr />
             <UserCardShort name="Vera" age={33} />
+            <hr />
+            {/* Three instances of one component, each with different props.
+                name="iPhone"  -> string, so plain quotes
+                price={1000}   -> number, so braces (quotes would pass "1000") */}
+            <ProductCard name="iPhone" price={1000} />
+            <ProductCard name="Samsung" price={2000} />
+            <ProductCard name="Xiaomi" price={3000} />
           </div>
         );
       }
