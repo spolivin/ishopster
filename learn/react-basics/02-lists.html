@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>React 02 — rendering lists</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        line-height: 1.5;
+        max-width: 640px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+        color: #1a1a1a;
+      }
+      h1 {
+        font-size: 1.25rem;
+        margin: 1.5rem 0 0.5rem;
+        padding-bottom: 0.25rem;
+        border-bottom: 1px solid #ddd;
+      }
+      h2 {
+        font-size: 1.05rem;
+        margin: 0.75rem 0 0.25rem;
+      }
+      ul {
+        padding-left: 1.25rem;
+      }
+      li {
+        margin: 0.25rem 0;
+      }
+      button {
+        font: inherit;
+        padding: 0.3rem 0.7rem;
+        margin-right: 0.5rem;
+        cursor: pointer;
+      }
+      input {
+        font: inherit;
+        padding: 0.3rem 0.5rem;
+      }
+      hr {
+        margin: 2rem 0;
+        border: none;
+        border-top: 1px solid #ddd;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <script type="text/babel">
+      // =====================================================================
+      //  JS FIRST: arrays and .map()
+      // =====================================================================
+      //
+      //  An array is an ordered list of values. Here, a list of objects —
+      //  the same shape the FastAPI backend returns as JSON.
+
+      // --- Exercise 2 solution ------------------------------------------
+      //  Added a 4th product and an `inStock` boolean on every object.
+      //  Different values so the conditional in ProductRow is visible.
+      const products = [
+        { slug: "iphone-15", name: "iPhone 15", price: 79990, inStock: true },
+        {
+          slug: "pixel-8",
+          name: "Google Pixel 8",
+          price: 62990,
+          inStock: true,
+        },
+        {
+          slug: "redmi-note-13",
+          name: "Redmi Note 13",
+          price: 19990,
+          inStock: false,
+        },
+        {
+          slug: "samsung-s24",
+          name: "Samsung S24",
+          price: 14990,
+          inStock: false,
+        },
+      ];
+
+      //  .map() takes a function and runs it on every element, collecting the
+      //  RETURN values into a new array of the same length.
+      //
+      //    [1, 2, 3].map((n) => n * 10)   ->   [10, 20, 30]
+      //
+      //  The argument name is yours to choose. `(product) => ...` means
+      //  "for each element, call it `product` and return this".
+
+      const names = products.map((product) => product.name);
+      console.log(names); // ["iPhone 15", "Google Pixel 8", "Redmi Note 13"]
+
+      // =====================================================================
+      //  REACT: turn an array of data into an array of elements
+      // =====================================================================
+      //
+      //  JSX can hold an array of elements directly. So the pattern is:
+      //  map each data object to a piece of JSX.
+      //
+      //  key={...}  — REQUIRED on list items. React uses it to tell items
+      //  apart between renders (which one moved, was added, was removed).
+      //  It must be STABLE and UNIQUE among siblings. Use a real id / slug
+      //  from your data, never the array index if the list can change order.
+
+      function ProductList() {
+        return (
+          <ul>
+            {products.map((product) => (
+              <li key={product.slug}>
+                {product.name} — {product.price} ₽
+              </li>
+            ))}
+          </ul>
+        );
+      }
+
+      // ---------------------------------------------------------------------
+      //  Better: one component per item
+      // ---------------------------------------------------------------------
+      //
+      //  Instead of cramming the item markup into .map(), give it a name.
+      //  .map() then just wires data to a component. The `key` goes on the
+      //  component where it is used (inside .map()), not inside ProductRow.
+
+      function ProductRow({ product }) {
+        return (
+          <li>
+            <strong>{product.name}</strong> — {product.price} ₽ -{" "}
+            {/* Ternary `cond ? a : b` is an EXPRESSION (it produces a value),
+                so it works inside { }. A plain if/else would not. */}
+            {product.inStock ? "in stock" : "not in stock"}
+          </li>
+        );
+      }
+
+      function ProductListClean() {
+        return (
+          <ul>
+            {products.map((product) => (
+              <ProductRow key={product.slug} product={product} />
+            ))}
+          </ul>
+        );
+      }
+
+      // =====================================================================
+
+      function App() {
+        return (
+          <div>
+            <h1>Inline map</h1>
+            <ProductList />
+            <h1>One component per row</h1>
+            <ProductListClean />
+          </div>
+        );
+      }
+
+      const root = ReactDOM.createRoot(document.getElementById("root"));
+      root.render(<App />);
+    </script>
+  </body>
+</html>

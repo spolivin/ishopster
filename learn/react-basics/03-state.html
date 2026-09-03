@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>React 03 — state and events</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        line-height: 1.5;
+        max-width: 640px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+        color: #1a1a1a;
+      }
+      h1 {
+        font-size: 1.25rem;
+        margin: 1.5rem 0 0.5rem;
+        padding-bottom: 0.25rem;
+        border-bottom: 1px solid #ddd;
+      }
+      h2 {
+        font-size: 1.05rem;
+        margin: 0.75rem 0 0.25rem;
+      }
+      ul {
+        padding-left: 1.25rem;
+      }
+      li {
+        margin: 0.25rem 0;
+      }
+      button {
+        font: inherit;
+        padding: 0.3rem 0.7rem;
+        margin-right: 0.5rem;
+        cursor: pointer;
+      }
+      input {
+        font: inherit;
+        padding: 0.3rem 0.5rem;
+      }
+      hr {
+        margin: 2rem 0;
+        border: none;
+        border-top: 1px solid #ddd;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <script type="text/babel">
+      // We need one hook from React. `React.useState` also works; this just
+      // pulls the name out so we can write `useState` directly.
+      const { useState } = React;
+
+      // =====================================================================
+      //  THE PROBLEM
+      // =====================================================================
+      //
+      //  A component is a function that runs, returns JSX, and is done.
+      //  A plain local variable would not help:
+      //
+      //    function Broken() {
+      //      let count = 0;
+      //      return <button onClick={() => count++}>{count}</button>;
+      //    }
+      //
+      //  Clicking changes `count`, but nothing tells React to run the
+      //  function again, so the screen never updates. And next time it DOES
+      //  run, `count` is reset to 0.
+      //
+      //  STATE is a value React remembers between renders, and changing it
+      //  tells React to re-render the component.
+
+      // =====================================================================
+      //  useState
+      // =====================================================================
+      //
+      //  const [value, setValue] = useState(initialValue);
+      //
+      //  - value    : the current value (this render)
+      //  - setValue : function to change it; calling it triggers a re-render
+      //  - useState(0) : the initial value, used only on the first render
+      //
+      //  The [a, b] = ... syntax is array destructuring: useState returns a
+      //  2-element array and we name both slots.
+
+      function Counter() {
+        const [count, setCount] = useState(0);
+
+        return (
+          <div>
+            <p>Count: {count}</p>
+            {/* onClick gets a FUNCTION, not a call. `() => setCount(...)`,
+                not `setCount(...)`. The arrow makes a function that runs
+                later, on click. */}
+            <button onClick={() => setCount(count + 1)}>+1</button>
+            <button onClick={() => setCount(0)}>reset</button>
+          </div>
+        );
+      }
+
+      // ---------------------------------------------------------------------
+      //  Controlled input: state <-> text field
+      // ---------------------------------------------------------------------
+      //
+      //  1. The input's `value` is driven BY state.
+      //  2. Every keystroke fires `onChange`, which reads the new text from
+      //     event.target.value and writes it back to state.
+      //  3. State changes -> re-render -> input shows the new value.
+      //
+      //  The state is the single source of truth; the DOM just reflects it.
+
+      function NameEcho() {
+        const [name, setName] = useState("");
+
+        return (
+          <div>
+            <input
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder="type your name"
+            />
+            <p>{name === "" ? "(nothing typed yet)" : `Hello, ${name}!`}</p>
+          </div>
+        );
+      }
+
+      // ---------------------------------------------------------------------
+      //  State can hold anything: here a boolean toggles what is shown.
+      // ---------------------------------------------------------------------
+
+      function Details() {
+        const [open, setOpen] = useState(false);
+
+        return (
+          <div>
+            <button onClick={() => setOpen(!open)}>
+              {open ? "Hide" : "Show"} details
+            </button>
+            {/* `condition && <JSX/>` : render the JSX only when condition is
+                true. When false, React renders nothing. */}
+            {open && <p>Here are the secret details.</p>}
+          </div>
+        );
+      }
+
+      const products = [
+        { slug: "iphone-15", name: "iPhone 15", price: 79990, inStock: true },
+        {
+          slug: "pixel-8",
+          name: "Google Pixel 8",
+          price: 62990,
+          inStock: true,
+        },
+        {
+          slug: "redmi-note-13",
+          name: "Redmi Note 13",
+          price: 19990,
+          inStock: false,
+        },
+        {
+          slug: "samsung-s24",
+          name: "Samsung S24",
+          price: 14990,
+          inStock: false,
+        },
+      ];
+
+      // --- Exercise 3 solution -----------------------------------------
+      //  A boolean in state controls whether the list is filtered.
+      function ProductFilter() {
+        // One piece of state: is the "in stock only" filter on?
+        const [onlyInStock, setOnlyInStock] = useState(false);
+
+        // DERIVED value: computed from state + data on every render.
+        // Do this work in the function body, not inside the JSX — the
+        // markup below then only has to display `visible`.
+        const visible = onlyInStock
+          ? products.filter((p) => p.inStock)
+          : products;
+
+        return (
+          <div>
+            {/* Updater form `(prev) => !prev`: flip whatever the value was.
+                Safer default than `!onlyInStock` when updates can batch. */}
+            <button onClick={() => setOnlyInStock((prev) => !prev)}>
+              {onlyInStock ? "All items" : "In stock"}
+            </button>
+            <ul>
+              {visible.map((product) => (
+                <li key={product.slug}>{product.name}</li>
+              ))}
+            </ul>
+          </div>
+        );
+      }
+
+      // =====================================================================
+
+      function App() {
+        return (
+          <div>
+            <h1>Counter</h1>
+            <Counter />
+            <h1>Name echo</h1>
+            <NameEcho />
+            <h1>Toggle</h1>
+            <Details />
+            <hr />
+            <ProductFilter />
+          </div>
+        );
+      }
+
+      const root = ReactDOM.createRoot(document.getElementById("root"));
+      root.render(<App />);
+    </script>
+  </body>
+</html>
