@@ -9,7 +9,12 @@ export const dynamic = "force-dynamic";
 
 const PAGE_SIZE = 20;
 
-type SearchParams = Promise<{ page?: string }>;
+// Next passes the same props object to both generateMetadata and the page
+// component. `searchParams` is a Promise in this version of Next, so it is
+// awaited before use. We only read `page`, hence the narrow shape.
+type Props = {
+  searchParams: Promise<{ page?: string }>;
+};
 
 // Parse ?page= into a 1-based integer. Anything invalid falls back to 1.
 function parsePage(raw: string | undefined): number {
@@ -22,9 +27,7 @@ const hrefForPage = (page: number) =>
 
 export async function generateMetadata({
   searchParams,
-}: {
-  searchParams: SearchParams;
-}): Promise<Metadata> {
+}: Props): Promise<Metadata> {
   const page = parsePage((await searchParams).page);
   const path = hrefForPage(page);
   const title = page === 1 ? "All products" : `All products – page ${page}`;
@@ -40,11 +43,7 @@ export async function generateMetadata({
   };
 }
 
-export default async function ProductsPage({
-  searchParams,
-}: {
-  searchParams: SearchParams;
-}) {
+export default async function ProductsPage({ searchParams }: Props) {
   const page = parsePage((await searchParams).page);
   const offset = (page - 1) * PAGE_SIZE;
 
