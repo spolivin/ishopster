@@ -8,3 +8,6 @@ dist/
 .env
 .env.*
 !.env.example
+
+# Compiled Go binary: `go build` without -o names it after the module directory.
+/backend-go/backend-go
