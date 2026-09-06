@@ -2,9 +2,11 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log"
 	"net/http"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -38,6 +40,16 @@ func listCategories(ctx context.Context, pool *pgxpool.Pool) ([]Category, error)
 	return categories, nil
 }
 
+func getCategory(ctx context.Context, pool *pgxpool.Pool, slug string) (Category, error) {
+	var c Category
+	const q = `SELECT id, name, slug, description FROM categories WHERE slug = $1`
+	err := pool.QueryRow(ctx, q, slug).Scan(&c.ID, &c.Name, &c.Slug, &c.Description)
+	if err != nil {
+		return Category{}, err
+	}
+	return c, nil
+}
+
 func categoriesHandler(pool *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		categories, err := listCategories(r.Context(), pool)
@@ -49,5 +61,26 @@ func categoriesHandler(pool *pgxpool.Pool) http.HandlerFunc {
 			return
 		}
 		writeJSON(w, http.StatusOK, categories)
+	}
+}
+
+func categoryHandler(pool *pgxpool.Pool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		slug := r.PathValue("slug")
+		category, err := getCategory(r.Context(), pool, slug)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				writeJSON(w, http.StatusNotFound, errorResponse{
+					Detail: "category not found",
+				})
+				return
+			}
+			log.Printf("get category %q: %v", slug, err)
+			writeJSON(w, http.StatusInternalServerError, errorResponse{
+				Detail: "internal error",
+			})
+			return
+		}
+		writeJSON(w, http.StatusOK, category)
 	}
 }
