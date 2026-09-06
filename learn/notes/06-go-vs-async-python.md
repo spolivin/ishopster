@@ -30,7 +30,7 @@ it maps onto level 3.**
 
 | Level                | Owned by     | What it is                                                                            | Cost of one          |
 | -------------------- | ------------ | -------------------------------------------------------------------------------------- | -------------------- |
-| **1. Core**          | hardware     | executes instructions. This machine has 4 — a hard ceiling for *simultaneous* execution | fixed                |
+| **1. Core**          | hardware     | executes instructions. Their number is a hard ceiling on *simultaneous* execution, in any language | fixed                |
 | **2. Process**       | OS           | isolated program: own memory, own sockets, own DB pool. Processes cannot see each other's variables | heavy (MBs, ms)      |
 | **3. Thread**        | OS           | line of execution **inside** a process; threads share memory. The OS schedules *these* onto cores | ~8 MB stack, µs switch |
 | **4. Task**          | the language | coroutine / goroutine. **The OS does not know it exists** — the runtime switches it without entering the kernel | ~KBs, ns switch      |
@@ -38,7 +38,7 @@ it maps onto level 3.**
 ### Python
 
 ```
-4 cores
+N cores  (N = 4 in this sketch)
 ├─ uvicorn process #1
 │    ├─ thread 1 ──▶ event loop ──▶ coroutines A, B, C, D…  (one at a time)
 │    └─ threads 2..n ──▶ pool for plain `def` handlers
@@ -48,13 +48,13 @@ it maps onto level 3.**
 ```
 
 Every coroutine of one process lives in **one** thread. A thousand coroutines
-still occupy one core. Using 4 cores means 4 processes — and 4 connection
+still occupy one core. Using N cores means N processes — and N connection
 pools.
 
 ### Go
 
 ```
-4 cores
+N cores  (N = 4 in this sketch)
 └─ one process
      ├─ thread 1 ─ P1 ─▶ goroutines G7, G12, G3 …
      ├─ thread 2 ─ P2 ─▶ goroutines G4, G9 …
@@ -66,25 +66,38 @@ pools.
 One process, a handful of threads, thousands of goroutines. The runtime maps
 goroutines onto threads; the OS maps threads onto cores.
 
-### Measured on this machine
+### Seeing it yourself
 
-Both services idle, right after start:
+The OS only ever shows you levels 2 and 3. Start either backend and ask for
+its process and thread count:
 
-|                        | processes        | OS threads | RSS       |
-| ---------------------- | ---------------- | ---------- | --------- |
-| Go (`srv`)             | 1                | 6          | **11 MB** |
-| FastAPI (`fastapi run`)| 1 (+ `uv` wrapper) | 6        | **96 MB** |
+```bash
+ps -o pid,nlwp,rss,comm -p <pid>     # nlwp = OS threads, rss = resident memory
+```
 
-Read those numbers carefully:
+A sample run — 4-core Linux box, both services idle right after start, one
+worker each:
 
-- **Thread counts match, meaning differs.** Go's 6 = 4 execution slots + GC and
-  netpoller helpers, and all 4 run *your* code in parallel. Python's 6 = the
-  event-loop thread + helpers, and only one of them ever runs your code.
-- **Goroutines are invisible to `ps`.** Serving 5000 connections would still
-  show 6 threads. That is the whole trick: 5000 tasks, 6 threads, 4 cores.
-- **Memory is per process.** In production the Python service needs
-  `--workers 4` to use the cores — roughly 380 MB and four separate pools
-  against PostgreSQL. Go stays one process, one pool.
+|                     | processes | OS threads | resident memory |
+| ------------------- | --------- | ---------- | --------------- |
+| Go binary           | 1         | 6          | 11 MB           |
+| FastAPI (1 worker)  | 1         | 6          | 96 MB           |
+
+Those exact numbers travel badly — they move with the core count, the Python
+version and what gets imported. Reproduce them rather than trusting them. What
+*does* hold everywhere:
+
+- **Similar thread counts, different meaning.** Go's 6 are execution slots (one
+  per core) plus GC and netpoller helpers, and the slots run *your* code in
+  parallel. Python's 6 are one event-loop thread plus helpers, and only one of
+  them ever runs bytecode.
+- **Tasks are invisible to `ps`.** Serving thousands of connections would show
+  the same 6 threads in either runtime. That is the whole point of level 4:
+  thousands of tasks, a few threads, N cores.
+- **Memory is counted per process.** To use every core, the Python service
+  needs one worker per core — on this sample box, `--workers 4` means roughly
+  380 MB and four separate pools against PostgreSQL. The Go binary stays one
+  process with one pool no matter how many cores it uses.
 
 ---
 
@@ -172,7 +185,7 @@ Three entities:
   the number of cores (`GOMAXPROCS`).
 
 ```
-       [ one process, 4 cores ]
+       [ one process, N cores — 4 here ]
        P1 ← M1 ← G7  G12 G3 …     ← each P owns a run queue
        P2 ← M2 ← G4  G9  …
        P3 ← M3 ← G1  G22 …
@@ -222,7 +235,7 @@ While that goroutine waits, the scheduler runs others. Nothing is marked.
 | Scheduled by                   | event loop, **cooperatively**                | runtime, cooperatively + **preemptively**       |
 | Yield points                   | explicit — `await`                           | implicit — calls, channels, syscalls            |
 | Cores used per process         | **1**                                        | all of them                                     |
-| To use 4 cores                 | 4 processes (4 pools, 4× memory)             | nothing to do                                   |
+| To use N cores                 | N processes (N pools, N× memory)             | nothing to do                                   |
 | One blocking call              | stalls **all** requests in the process       | stalls only that goroutine                      |
 | Sync/async split               | yes — colored functions, split ecosystem     | none                                            |
 | Shared mutable state           | mostly safe: one thread at a time            | genuinely unsafe: needs `sync.Mutex`, `-race`   |
@@ -244,7 +257,7 @@ Neither model is a bottleneck for a product catalog: the time is spent waiting
 for PostgreSQL, and both wait efficiently. The practical differences are
 operational.
 
-- **Process count.** `uvicorn --workers 4` = 4 interpreters, 4 pools, 4×
+- **Process count.** `uvicorn --workers N` = N interpreters, N pools, N× the
   memory. The Go binary is one process using all cores with one pool. That also
   means Postgres sees fewer connections from Go — worth remembering when tuning
   `max_connections`.
@@ -265,12 +278,12 @@ operational.
 3. Someone adds `time.sleep(2)` to an `async def` FastAPI endpoint and the same
    `time.Sleep(2 * time.Second)` to a Go handler. What does each do to *other*
    users' requests?
-4. `GOMAXPROCS` is 4 on this machine. Can the Go service serve 1000 requests
-   concurrently? What actually limits it?
+4. `GOMAXPROCS` defaults to the number of cores — say 4. Can the Go service
+   still serve 1000 requests concurrently? What actually limits it?
 5. Two requests arrive at once and both read `pool`. Why is that safe, and what
    would have to be true for it to become a race?
-6. `ps` shows 6 OS threads for each service. Why does that number say nothing
-   about how many requests either one can handle?
+6. `ps` shows a similar handful of OS threads for either service. Why does that
+   number say nothing about how many requests each one can handle?
 
 ---
 
@@ -293,9 +306,9 @@ sleeps; the scheduler runs everything else, and other users notice nothing.
 
 **4.** Yes, easily. Goroutines waiting on the network are parked by the
 netpoller and occupy no P, so `GOMAXPROCS` limits only simultaneous *execution*
-of Go code. The real ceiling here is the **connection pool** (`pgxpool`
-defaults to `max(4, runtime.NumCPU())` connections) and PostgreSQL itself — request
-1000 will wait for a free connection, not for a CPU.
+of Go code. The real ceiling is the **connection pool** (`pgxpool` defaults to
+`max(4, runtime.NumCPU())` connections) and PostgreSQL itself — request 1000
+waits for a free connection, not for a CPU.
 
 **5.** `*pgxpool.Pool` is documented as safe for concurrent use — it guards its
 internal state with locks, and each request checks out a connection for its own
@@ -308,9 +321,9 @@ counter as a bare `int`, a config struct someone reloads at runtime. Those need
 waiting on PostgreSQL is parked by the netpoller and holds no thread; a
 suspended coroutine holds no thread either. Both services can have far more
 requests in flight than they have threads, and the thread count barely moves.
-What the number *does* tell you is how much can execute at the same instant:
-4 of Go's 6 threads can run Go code in parallel, while exactly one of Python's
-runs bytecode at a time.
+What the number *does* tell you is how much can execute at the same instant: as
+many of Go's threads as there are cores can run Go code in parallel, while
+exactly one of Python's runs bytecode at a time.
 
 ---
 
