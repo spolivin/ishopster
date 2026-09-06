@@ -31,6 +31,7 @@ func main() {
 	mux.HandleFunc("GET /health/db", healthDBHandler(pool))
 	mux.HandleFunc("GET /api/categories", categoriesHandler(pool))
 	mux.HandleFunc("GET /api/categories/{slug}", categoryHandler(pool))
+	mux.HandleFunc("GET /api/products/{slug}", productHandler(pool))
 
 	log.Printf("listening on %s", addr)
 	log.Fatal(http.ListenAndServe(addr, mux))
