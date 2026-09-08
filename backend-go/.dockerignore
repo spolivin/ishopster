@@ -1,0 +1,7 @@
+.env
+.env.*
+.git
+Dockerfile
+.dockerignore
+# Locally built binary: the image builds its own inside the container.
+backend-go

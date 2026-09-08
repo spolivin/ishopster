@@ -20,7 +20,13 @@ services:
       timeout: 5s
       retries: 5
 
+  # Two interchangeable API implementations behind the same contract. They
+  # claim the same port and the same network name, so exactly one profile
+  # may be active at a time:
+  #   docker compose --profile python up
+  #   docker compose --profile go up
   backend:
+    profiles: ["python"]
     build: ./backend
     restart: unless-stopped
     env_file: .env
@@ -34,7 +40,28 @@ services:
       db:
         condition: service_healthy
 
+  backend-go:
+    profiles: ["go"]
+    build: ./backend-go
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      POSTGRES_HOST: db
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      default:
+        # The frontend fetches http://backend:8000 regardless of which
+        # implementation runs, so this service answers to that name too.
+        aliases:
+          - backend
+
   frontend:
+    # Runs under either profile: it only talks to the "backend" name.
+    profiles: ["python", "go"]
     build: ./frontend
     restart: unless-stopped
     environment:
@@ -45,8 +72,9 @@ services:
       SITE_URL: http://localhost:3000
     ports:
       - "3000:3000"
-    depends_on:
-      - backend
+    # No depends_on: the API service differs per profile, and compose cannot
+    # express a conditional dependency. Pages fetch per request, so the
+    # frontend tolerates the API coming up a moment later.
 
 volumes:
   pgdata:
