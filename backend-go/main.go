@@ -12,13 +12,36 @@ import (
 // Address the HTTP server listens on.
 const addr = ":8000"
 
-// Middleware logging every request
+// statusRecorder wraps a ResponseWriter to remember the status code sent to
+// the client. The interface can be written to but not read back, so the code
+// has to be captured on its way out.
+//
+// The embedded ResponseWriter supplies Header and Write unchanged, which is
+// what makes the wrapper usable anywhere the real one is.
+type statusRecorder struct {
+	http.ResponseWriter
+	status int
+}
+
+// WriteHeader records the status code, then lets the real ResponseWriter send
+// it. Delegating through the embedded field is required: calling
+// rec.WriteHeader here would recurse into this method forever.
+func (rec *statusRecorder) WriteHeader(status int) {
+	rec.status = status
+	rec.ResponseWriter.WriteHeader(status)
+}
+
+// logging wraps a handler so that every request is logged with its method,
+// URI, status and duration. It wraps the whole mux rather than individual
+// handlers, so responses the router generates itself (404, 405) are logged
+// too.
 func logging(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
-		next.ServeHTTP(w, r)
+		rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
+		next.ServeHTTP(rec, r)
 		elapsed := time.Since(start)
-		log.Printf("%s %s %s", r.Method, r.URL.RequestURI(), elapsed)
+		log.Printf("%s %s %d %s", r.Method, r.URL.RequestURI(), rec.status, elapsed)
 	})
 }
 
