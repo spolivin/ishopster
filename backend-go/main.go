@@ -4,12 +4,23 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // Address the HTTP server listens on.
 const addr = ":8000"
+
+// Middleware logging every request
+func logging(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		next.ServeHTTP(w, r)
+		elapsed := time.Since(start)
+		log.Printf("%s %s %s", r.Method, r.URL.RequestURI(), elapsed)
+	})
+}
 
 func main() {
 	config := loadConfig()
@@ -35,5 +46,5 @@ func main() {
 	mux.HandleFunc("GET /api/products/{slug}", productHandler(pool))
 
 	log.Printf("listening on %s", addr)
-	log.Fatal(http.ListenAndServe(addr, mux))
+	log.Fatal(http.ListenAndServe(addr, logging(mux)))
 }
